@@ -1,0 +1,24 @@
+dataset:
+  root: data
+  threshold: 4
+  num_workers: 2
+  batch_size: 1024
+
+model:
+  name: mf
+  embedding_dim: 64
+  user_reg: 1.0e-6
+  item_reg: 1.0e-6
+
+train:
+  epochs: 10
+  lr: 5.0e-3
+  loss: slatk  # sl | bpr | slatk
+  loss_params:
+    tau_d: 0.5
+    tau_w: 0.5
+    topk: 10
+  num_negatives: 200
+  eval_k: 10
+  seed: 42
+

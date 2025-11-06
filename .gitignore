@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.DS_Store
+data/ml-100k/
+outputs/
+checkpoints/
+
