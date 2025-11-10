@@ -11,7 +11,7 @@ import torch.optim as optim
 import yaml
 from torch.utils.data import DataLoader
 
-from models import MatrixFactorization
+from models import MatrixFactorization, LightGCN, XSimGCL
 from losses import BPRLoss, SoftmaxLoss, SoftmaxLossAtK
 from metrics import recall_at_k, ndcg_at_k
 from data.movielens import (
@@ -32,6 +32,17 @@ def set_seed(seed: int):
 def load_config(cfg_path: str) -> dict:
     with open(cfg_path, "r") as f:
         return yaml.safe_load(f)
+
+
+def build_model(num_users: int, num_items: int, **kwargs) -> nn.Module:
+    name = kwargs.pop("name").lower()
+    if name == "mf":
+        return MatrixFactorization(num_users, num_items, kwargs["embedding_dim"], kwargs["user_reg"], kwargs["item_reg"])
+    elif name == 'lightgcn':
+        return LightGCN(num_users, num_items, **kwargs)
+    elif name == 'xsimgcl':
+        return XSimGCL(num_users, num_items, **kwargs)
+    raise ValueError(f"Unknown model: {name}")
 
 
 def build_loss(name: str, params: dict) -> nn.Module:
@@ -87,8 +98,11 @@ def main():
     neg_sampler = UniformNegativeSampler(num_items, user_pos_dict)
 
     # 模型
-    emb_dim = int(cfg["model"]["embedding_dim"])
-    model = MatrixFactorization(num_users, num_items, emb_dim, cfg["model"]["user_reg"], cfg["model"]["item_reg"]).to(device)
+    # emb_dim = int(cfg["model"]["embedding_dim"])
+    # model = MatrixFactorization(num_users, num_items, emb_dim, cfg["model"]["user_reg"], cfg["model"]["item_reg"]).to(device)
+    model_kwargs = {"edges": interactions}
+    model_kwargs.update(cfg["model"])
+    model = build_model(num_users, num_items, **model_kwargs).to(device)
 
     # 损失
     loss_name = cfg["train"]["loss"].lower()
@@ -126,6 +140,10 @@ def main():
             # 加 L2 正则
             reg = model.l2_regularization(user_ids, pos_ids, neg_ids)
             total_loss = loss + reg
+            if isinstance(model, XSimGCL):
+                # 加对比损失
+                contrast_loss = model.contrastive_loss(user_ids, pos_ids)
+                total_loss += contrast_loss
 
             optimizer.zero_grad()
             total_loss.backward()

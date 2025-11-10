@@ -1,5 +1,6 @@
 import torch
 from torch import nn
+from typing import Optional
 
 
 class MatrixFactorization(nn.Module):
@@ -41,7 +42,7 @@ class MatrixFactorization(nn.Module):
         q = self.item_embeddings.weight  # [N, D]
         return p_u @ q.t()
 
-    def l2_regularization(self, user_ids: torch.Tensor, pos_item_ids: torch.Tensor, neg_item_ids: torch.Tensor | None = None) -> torch.Tensor:
+    def l2_regularization(self, user_ids: torch.Tensor, pos_item_ids: torch.Tensor, neg_item_ids: Optional[torch.Tensor] = None) -> torch.Tensor:
         reg = self.user_embeddings(user_ids).pow(2).sum() * self.user_reg
         reg = reg + self.item_embeddings(pos_item_ids).pow(2).sum() * self.item_reg
         if neg_item_ids is not None:
