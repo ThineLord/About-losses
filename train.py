@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+from logging import config
 import os
 import random
 from typing import Dict, Set
@@ -8,12 +9,13 @@ from typing import Dict, Set
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from tqdm import tqdm
 import yaml
 from torch.utils.data import DataLoader
 
 from models import MatrixFactorization
 from losses import BPRLoss, SoftmaxLoss, SoftmaxLossAtK
-from metrics import recall_at_k, ndcg_at_k
+from metrics import recall_at_k, ndcg_at_k, precision_at_k
 from data.movielens import (
     TripletDataset,
     load_ml100k_interactions,
@@ -22,6 +24,7 @@ from data.movielens import (
 )
 from samplers import UniformNegativeSampler
 
+import wandb
 
 def set_seed(seed: int):
     random.seed(seed)
@@ -33,6 +36,12 @@ def load_config(cfg_path: str) -> dict:
     with open(cfg_path, "r") as f:
         return yaml.safe_load(f)
 
+def clear_cuda():
+    import torch
+    import gc
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+    gc.collect()
 
 def build_loss(name: str, params: dict) -> nn.Module:
     name = name.lower()
@@ -49,26 +58,31 @@ def build_loss(name: str, params: dict) -> nn.Module:
     raise ValueError(f"Unknown loss: {name}")
 
 
-def evaluate(model: MatrixFactorization, user_to_eval_pos: Dict[int, Set[int]], k: int, device: torch.device) -> tuple[float, float]:
+def evaluate(model: MatrixFactorization, user_to_eval_pos: Dict[int, Set[int]], k: int, device: torch.device) -> dict[str, float]:
     model.eval()
     with torch.no_grad():
         users = sorted(user_to_eval_pos.keys())
         if not users:
-            return 0.0, 0.0
+            return {}
         user_ids = torch.tensor(users, dtype=torch.long, device=device)
         scores = model.full_item_scores(user_ids)
         gt = [list(user_to_eval_pos[u]) for u in users]
         rec = recall_at_k(scores, gt, k)
         ndcg = ndcg_at_k(scores, gt, k)
-    return rec, ndcg
+        prec = precision_at_k(scores, gt, k)
+    # Use dict to return multiple metrics
+    return {
+        "rec": rec,
+        "ndcg": ndcg,
+        "prec": prec,
+    }
 
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--config", type=str, default="cfgs/default.yaml")
-    args = parser.parse_args()
-
-    cfg = load_config(args.config)
+def train(
+    cfg: dict,
+    project_name: str = "comp5331-project",
+    use_wandb: bool = True,
+):
     set_seed(int(cfg["train"].get("seed", 42)))
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -101,10 +115,22 @@ def main():
     num_negatives = int(cfg["train"]["num_negatives"])  # 用于 softmax 的候选近似与 BPR 的负例
     eval_k = int(cfg["train"]["eval_k"])  # 评估@K
 
+    # Logging
+    run_name = f"movielens_{cfg['model']['name']}_{loss_name}@{eval_k}"
+    if use_wandb:
+        wandb.login(key=os.environ.get("WANDB_API_KEY", None))
+        wandb.init(
+            project=project_name,
+            config=cfg,
+            name=run_name,
+        )
+
+    test_metrics = {}
+
     for epoch in range(1, epochs + 1):
         model.train()
         epoch_loss = 0.0
-        for batch in train_loader:
+        for batch in tqdm(train_loader, desc=f"Epoch {epoch}/{epochs}"):
             user_ids, pos_ids = [x.to(device) for x in batch]
 
             # 负采样
@@ -132,12 +158,46 @@ def main():
             optimizer.step()
             epoch_loss += float(total_loss.detach().cpu())
 
-        # 评估（全量打分）
-        val_recall, val_ndcg = evaluate(model, val_dict, eval_k, device)
-        test_recall, test_ndcg = evaluate(model, test_dict, eval_k, device)
-        print(f"Epoch {epoch:03d} | loss={epoch_loss/len(train_loader):.4f} | val R@{eval_k}={val_recall:.4f} NDCG@{eval_k}={val_ndcg:.4f} | test R@{eval_k}={test_recall:.4f} NDCG@{eval_k}={test_ndcg:.4f}")
+            if use_wandb:
+                wandb.log({
+                    "batch_loss": float(total_loss.detach().cpu())
+                })
 
+        # 评估（全量打分）
+        val_metrics = evaluate(model, val_dict, eval_k, device)
+        test_metrics = evaluate(model, test_dict, eval_k, device)
+        print(f"Epoch {epoch:03d} | loss={epoch_loss/len(train_loader):.4f} | val@{eval_k} {val_metrics}")
+
+        if use_wandb:
+            wandb.log({
+                "epoch_loss": epoch_loss / len(train_loader),
+            } | {f"val_{k}": v for k, v in val_metrics.items()} | {f"test_{k}": v for k, v in test_metrics.items()})
+
+    print("Training finished.")
+    print(f"Test@{eval_k} {test_metrics}")
+
+    if use_wandb:
+        wandb.finish()
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--config", type=str, default="cfgs/default.yaml")
+    args = parser.parse_args()
+
+    cfg = load_config(args.config)
+
+    from copy import deepcopy
+
+    # Hyperparameter sweep
+    for loss_name in ['sl', 'bpr', 'slatk']:
+        k_values = [5, 10, 20] if loss_name == 'slatk' else [10]
+        for k in k_values:
+            cfg_hyper = deepcopy(cfg)
+            cfg_hyper['train']['loss'] = loss_name
+            cfg_hyper['train']['eval_k'] = k
+            cfg_hyper['train']['loss_params']['topk'] = k
+            train(cfg_hyper, use_wandb=True)
+            clear_cuda()
 
 if __name__ == "__main__":
     main()
-

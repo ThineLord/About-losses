@@ -6,3 +6,5 @@ outputs/
 checkpoints/
 .venv
 data/ml-100k.zip
+.vscode
+wandb
