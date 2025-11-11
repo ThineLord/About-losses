@@ -5,8 +5,9 @@ dataset:
   batch_size: 1024
 
 model:
-  name: mf
+  name: mf # mf | lightgcn | xsimgcl
   embedding_dim: 64
+  num_layers: 3 # for lightgcn & xsimgcl
   user_reg: 1.0e-6
   item_reg: 1.0e-6
 
