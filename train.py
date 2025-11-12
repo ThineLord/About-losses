@@ -215,15 +215,16 @@ def main():
     project_name = f"comp5331-project-{datetime.now().strftime('%d%m%H%M')}"
 
     # Hyperparameter sweep
-    for model_name in ['mf', 'lightgcn', 'xsimgcl']:
+    for model_name in ['lightgcn', 'xsimgcl', 'mf']:
         for loss_name in ['sl', 'bpr', 'slatk']:
-            k_values = [5, 10, 20] if loss_name == 'slatk' else [10]
+            k_values = [10] if loss_name == 'slatk' else [10]
             for k in k_values:
                 cfg_hyper = deepcopy(cfg)
                 cfg_hyper['train']['loss'] = loss_name
                 cfg_hyper['train']['eval_k'] = k
                 cfg_hyper['train']['loss_params']['topk'] = k
                 cfg_hyper['model']['name'] = model_name
+                cfg_hyper["train"]["epochs"] = 100
                 train(cfg_hyper, project_name, use_wandb=True)
                 clear_cuda()
 
