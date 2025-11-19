@@ -107,9 +107,11 @@ def train(
     model_kwargs = {}
 
     if cfg["dataset"]["type"] == "proc":
+        print(f"Using processed dataset at {cfg['dataset']['root']}")
         num_users, num_items = get_data_summary(cfg["dataset"]["root"])
-        train_pairs, val_dict, test_dict = load_proc_data(cfg["dataset"]["root"])
+        interactions, train_pairs, val_dict, test_dict = load_proc_data(cfg["dataset"]["root"])
     else:
+        print("Using ml100k dataset")
         interactions, num_users, num_items = load_ml100k_interactions(cfg["dataset"]["root"], cfg["dataset"]["threshold"])
         train_pairs, val_dict, test_dict = split_leave_one_out(interactions, num_users)
         model_kwargs["edges"] = interactions

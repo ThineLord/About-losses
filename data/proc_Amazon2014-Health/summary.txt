@@ -1,13 +1,2 @@
-Final dataset statistics:
-Dataset: Amazon2014-Health
 Number of users: 1974
-Number of items: 1200
-Number of interactions: 48189
-Number of train interactions: 37784
-Number of test interactions: 10405
-Density: 0.02034
-Number of unique users in train: 1974
-Number of unique items in train: 1200
-Number of unique users in test: 1974
-Number of unique items in test: 1192
-N-core: 10
+Number of users: 1200

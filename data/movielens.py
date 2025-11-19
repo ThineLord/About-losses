@@ -97,5 +97,8 @@ class TripletDataset(Dataset):
 def build_user_pos_dict(pairs: List[Tuple[int, int]], num_users: int) -> Dict[int, Set[int]]:
     d: Dict[int, Set[int]] = {u: set() for u in range(num_users)}
     for u, i in pairs:
-        d[u].add(i)
+        if u in d:
+            d[u].add(i)
+        else:
+            d[u] = {i}
     return d

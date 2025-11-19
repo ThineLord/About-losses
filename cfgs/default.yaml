@@ -1,6 +1,6 @@
 dataset:
-  type: proc
-  root: data/proc_Gowalla
+  type: proc # proc | others
+  root: data/proc_Gowalla # data/proc_Amazon2014-Book | data/proc_Amazon2014-Electronic | data/proc_Amazon2014-Health | data/proc_Gowalla
   threshold: 4
   num_workers: 2
   batch_size: 1024
