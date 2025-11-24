@@ -78,7 +78,7 @@ def write_dataset(dataset_name: str, data: List[Tuple[int, int]]) -> None:
 
     with open(f"{folder}/summary.txt", "w") as f:
         f.write(f"Number of users: {len(user_map)}\n")
-        f.write(f"Number of users: {len(item_map)}\n")
+        f.write(f"Number of items: {len(item_map)}\n")
     write_tsv(
         sorted(train_data, key=lambda x: (x[0], x[1])),
         f"{folder}/train.tsv",
@@ -147,34 +147,34 @@ def process_gowalla(
     print("Writing complete\n")
 
 
-if __name__ == "__main__":
-    random.seed(5331)
+random.seed(5331)
 
-    core = 10
-    star_threshold = 3
+core = 10
+star_threshold = 3
 
-    print(f"Processing datasets with {core} cores and star threshold {star_threshold}")
-    process_amazon(
-        "Amazon2014-Book",
-        "raw/ratings_Books.csv",
-        core,
-        star_threshold,
-    )
-    process_amazon(
-        "Amazon2014-Electronic",
-        "raw/ratings_Electronics.csv",
-        core,
-        star_threshold,
-    )
-    process_amazon(
-        "Amazon2014-Health",
-        "raw/ratings_Health_and_Personal_Care.csv",
-        core,
-        star_threshold,
-    )
-    process_gowalla(
-        "Gowalla",
-        "raw/loc-gowalla_totalCheckins.txt.gz",
-        core,
-        star_threshold,
-    )
+print(f"Processing datasets with {core} cores and star threshold {star_threshold}")
+process_amazon(
+    "Amazon2014-Book",
+    "raw/ratings_Books.csv",
+    core,
+    star_threshold,
+)
+process_amazon(
+    "Amazon2014-Electronic",
+    "raw/ratings_Electronics.csv",
+    core,
+    star_threshold,
+)
+process_amazon(
+    "Amazon2014-Health",
+    "raw/ratings_Health_and_Personal_Care.csv",
+    core,
+    star_threshold,
+)
+process_gowalla(
+    "Gowalla",
+    "raw/loc-gowalla_totalCheckins.txt.gz",
+    core,
+    star_threshold,
+)
+print("Processing complete, please modify configuration file to use precessed dataset")
