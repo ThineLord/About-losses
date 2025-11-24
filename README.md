@@ -39,6 +39,23 @@ pip install -r requirements.txt
 python -m scripts.prepare_movielens
 ```
 
+4. **Prepare original paper datasets** (Optional, Amazon/Gowalla):
+
+```bash
+# Download raw data from the following links:
+# https://jmcauley.ucsd.edu/data/amazon/index_2014.html
+# https://snap.stanford.edu/data/loc-Gowalla.html
+# Prepare the raw data in the directory as follows:
+# data
+# ├── process_data.ipynb
+# └── raw
+#     ├── loc-gowalla_totalCheckins.txt.gz
+#     ├── ratings_Books.csv
+#     ├── ratings_Electronics.csv
+#     └── ratings_Health_and_Personal_Care.csv
+python data/process_data.py
+```
+
 ## How to Execute
 
 ### Basic Training
@@ -107,7 +124,7 @@ python figure3.py
 
 - **`data/movielens.py`**: MovieLens 100K dataset loading and processing, including data reading, interaction construction, leave-one-out splitting, etc.
 - **`data/read_proc_data.py`**: Interface for reading preprocessed datasets (Amazon, Gowalla, etc.)
-- **`data/proc_*/`**: Preprocessed dataset directories containing training sets, test sets, and user/item lists
+- **`data/proc_*/`**: Preprocessed dataset directories containing training sets, test sets, and user/item summaries
 
 ### Evaluation Metrics Module (`metrics/`)
 
@@ -161,7 +178,7 @@ Edit `cfgs/default.yaml` or create a new configuration file:
 ```yaml
 dataset:
   type: proc
-  root: data/proc_Gowalla
+  root: data/proc_Amazon2014-Health
   batch_size: 1024
 
 model:

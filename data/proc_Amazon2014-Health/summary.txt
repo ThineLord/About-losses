@@ -1,2 +1,2 @@
 Number of users: 1974
-Number of users: 1200
+Number of items: 1200
